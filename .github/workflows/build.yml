@@ -1,0 +1,64 @@
+name: Build Egy Group Scanner
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Version
+        id: ver
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_type }}" -eq "tag") { $v = "${{ github.ref_name }}".TrimStart('v') } else { $v = "1.0.0" }
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Build (Release, x86, single exe)
+        run: dotnet build EgyGroupScanner.csproj -c Release
+
+      - name: Collect portable files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist/portable | Out-Null
+          Copy-Item bin/Release/net48/EgyGroupScanner.exe dist/portable/
+          Get-Item dist/portable/EgyGroupScanner.exe | Select-Object Name, Length
+          Compress-Archive -Path dist/portable/EgyGroupScanner.exe -DestinationPath dist/EgyGroupScanner-Portable.zip -Force
+
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup --version=6.2.2 -y --no-progress
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DMyAppVersion=${{ steps.ver.outputs.version }}" installer/setup.iss
+
+      - name: Upload portable
+        uses: actions/upload-artifact@v4
+        with:
+          name: EgyGroupScanner-Portable
+          path: dist/portable/EgyGroupScanner.exe
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: EgyGroupScanner-Setup
+          path: dist/installer/EgyGroupScanner-Setup.exe
+
+      - name: Publish release (tags only)
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/EgyGroupScanner-Portable.zip
+            dist/installer/EgyGroupScanner-Setup.exe
