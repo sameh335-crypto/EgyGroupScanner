@@ -31,7 +31,7 @@ namespace EgyGroupScanner
 
         public MainForm()
         {
-            Text = "ايجي جروب اسكانر - Egy Group Scanner";
+            Text = "ايجي جروب اسكانر - Egy Group Scanner (" + (Environment.Is64BitProcess ? "64-bit" : "32-bit") + ")";
             Font = new Font("Tahoma", 9.5f);
             RightToLeft = RightToLeft.Yes;
             StartPosition = FormStartPosition.CenterScreen;
@@ -178,10 +178,11 @@ namespace EgyGroupScanner
         void RefreshScanners()
         {
             cmbScanner.Items.Clear();
+            var errors = new List<string>();
             foreach (BackendKind k in Enum.GetValues(typeof(BackendKind)))
             {
                 try { foreach (var sc in GetBackend(k).ListScanners()) cmbScanner.Items.Add(sc); }
-                catch (Exception ex) { Debug.WriteLine(k + ": " + ex.Message); }
+                catch (Exception ex) { errors.Add(k + ": " + ex.Message); }
             }
             if (cmbScanner.Items.Count > 0)
             {
@@ -190,7 +191,8 @@ namespace EgyGroupScanner
             }
             else
             {
-                lblStatus.Text = "مفيش سكانر. ثبّت التعريف الرسمي للماكينة وبعدها اضغط تحديث.";
+                lblStatus.Text = "مفيش سكانر. وصّل الماكينة وشغّلها ثم اضغط تحديث."
+                    + (errors.Count > 0 ? "  [" + string.Join(" | ", errors) + "]" : "");
             }
         }
 

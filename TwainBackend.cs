@@ -25,8 +25,9 @@ namespace EgyGroupScanner
         {
             if (_session != null) return;
 
-            // 32-bit app => legacy twain_32.dll, works on Windows 7/10/11 (32 and 64 bit)
-            PlatformInfo.Current.PreferNewDSM = false;
+            // 32-bit build => legacy twain_32.dll (32-bit drivers)
+            // 64-bit build => new twaindsm.dll (64-bit drivers, folder C:\Windows\twain_64)
+            PlatformInfo.Current.PreferNewDSM = Environment.Is64BitProcess;
 
             var appId = TWIdentity.CreateFromAssembly(DataGroups.Image, Assembly.GetEntryAssembly());
             var ses = new TwainSession(appId);
