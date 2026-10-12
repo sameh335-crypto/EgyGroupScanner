@@ -12,6 +12,10 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [AnyCPU, x86]
     steps:
       - uses: actions/checkout@v4
 
@@ -26,8 +30,8 @@ jobs:
           if ("${{ github.ref_type }}" -eq "tag") { $v = "${{ github.ref_name }}".TrimStart('v') } else { $v = "1.0.0" }
           "version=$v" >> $env:GITHUB_OUTPUT
 
-      - name: Build (Release, x86, single exe)
-        run: dotnet build EgyGroupScanner.csproj -c Release
+      - name: Build (Release, ${{ matrix.arch }}, single exe)
+        run: dotnet build EgyGroupScanner.csproj -c Release -p:PlatformTarget=${{ matrix.arch }} -p:Prefer32Bit=false
 
       - name: Collect portable files
         shell: pwsh
@@ -35,30 +39,30 @@ jobs:
           New-Item -ItemType Directory -Force dist/portable | Out-Null
           Copy-Item bin/Release/net48/EgyGroupScanner.exe dist/portable/
           Get-Item dist/portable/EgyGroupScanner.exe | Select-Object Name, Length
-          Compress-Archive -Path dist/portable/EgyGroupScanner.exe -DestinationPath dist/EgyGroupScanner-Portable.zip -Force
+          Compress-Archive -Path dist/portable/EgyGroupScanner.exe -DestinationPath dist/EgyGroupScanner-Portable-${{ matrix.arch }}.zip -Force
 
       - name: Build installer (Inno Setup)
         shell: pwsh
         run: |
           choco install innosetup --version=6.2.2 -y --no-progress
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DMyAppVersion=${{ steps.ver.outputs.version }}" installer/setup.iss
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DMyAppVersion=${{ steps.ver.outputs.version }}" "/DMyArch=${{ matrix.arch }}" setup.iss
 
       - name: Upload portable
         uses: actions/upload-artifact@v4
         with:
-          name: EgyGroupScanner-Portable
+          name: EgyGroupScanner-Portable-${{ matrix.arch }}
           path: dist/portable/EgyGroupScanner.exe
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: EgyGroupScanner-Setup
-          path: dist/installer/EgyGroupScanner-Setup.exe
+          name: EgyGroupScanner-Setup-${{ matrix.arch }}
+          path: dist/installer/EgyGroupScanner-Setup-${{ matrix.arch }}.exe
 
       - name: Publish release (tags only)
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/EgyGroupScanner-Portable.zip
-            dist/installer/EgyGroupScanner-Setup.exe
+            dist/EgyGroupScanner-Portable-${{ matrix.arch }}.zip
+            dist/installer/EgyGroupScanner-Setup-${{ matrix.arch }}.exe
