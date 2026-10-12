@@ -16,9 +16,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="NTwain" Version="3.7.5" />
     <PackageReference Include="PdfSharp" Version="1.50.5147" />
-    <!-- Embeds NTwain / PdfSharp inside the exe => one portable file -->
     <PackageReference Include="Costura.Fody" Version="5.7.0">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
